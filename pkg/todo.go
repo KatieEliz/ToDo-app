@@ -18,7 +18,7 @@ func LoadTodos() ([]Todo, error) {
 		}
 		return nil, err
 	}
-	defer file.Close() //function finish = file closed
+	defer file.Close() //function finish = file close
 
 	var todos []Todo
 	decoder := json.NewDecoder(file)
