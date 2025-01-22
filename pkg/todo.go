@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 )
 
@@ -44,4 +45,14 @@ func saveTodos(todos []TodoItem) error {
 	defer file.Close()
 
 	return json.NewEncoder(file).Encode(todos)
+}
+
+func addTodo(todos []TodoItem, description string) []TodoItem {
+	id := 1
+	if len(todos) > 0 {
+		id = todos[len(todos)-1].ID + 1
+	}
+	todos = append(todos, TodoItem{ID: id, Description: description, Status: "pending"})
+	fmt.Println("To-do item added")
+	return todos
 }
