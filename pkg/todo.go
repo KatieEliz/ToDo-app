@@ -35,3 +35,13 @@ func LoadTodos() ([]TodoItem, error) {
 	return todos, nil
 
 }
+
+func saveTodos(todos []TodoItem) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	return json.NewEncoder(file).Encode(todos)
+}
