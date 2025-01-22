@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 )
 
 type TodoItem struct {
@@ -55,4 +56,12 @@ func addTodo(todos []TodoItem, description string) []TodoItem {
 	todos = append(todos, TodoItem{ID: id, Description: description, Status: "pending"})
 	fmt.Println("To-do item added")
 	return todos
+}
+
+func updateTodoDescription(todos []TodoItem, input string) {
+	parts := strings.SplitN(input, ":", 2)
+	if len(parts) != 2 {
+		fmt.Println("Invalid format. Use ID:Description.")
+		return
+	}
 }
