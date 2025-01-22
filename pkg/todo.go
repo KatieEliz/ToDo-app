@@ -38,7 +38,7 @@ func LoadTodos() ([]TodoItem, error) {
 
 }
 
-func saveTodos(todos []TodoItem) error {
+func SaveTodos(todos []TodoItem) error {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
@@ -48,7 +48,7 @@ func saveTodos(todos []TodoItem) error {
 	return json.NewEncoder(file).Encode(todos)
 }
 
-func addTodo(todos []TodoItem, description string) []TodoItem {
+func AddTodo(todos []TodoItem, description string) []TodoItem {
 	id := 1
 	if len(todos) > 0 {
 		id = todos[len(todos)-1].ID + 1
@@ -58,7 +58,7 @@ func addTodo(todos []TodoItem, description string) []TodoItem {
 	return todos
 }
 
-func updateTodoDescription(todos []TodoItem, input string) {
+func UpdateTodoDescription(todos []TodoItem, input string) {
 	parts := strings.SplitN(input, ":", 2)
 	if len(parts) != 2 {
 		fmt.Println("Invalid format. Use ID:Description.")
