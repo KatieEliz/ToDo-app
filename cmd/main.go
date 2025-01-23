@@ -24,18 +24,22 @@ func main() {
 	switch {
 	case *add != "":
 		todos = pkg.AddTodo(todos, *add)
+		pkg.SaveTodos(todos)
 
 	case *update != "":
 		pkg.UpdateTodoDescription(todos, *update)
+		pkg.SaveTodos(todos)
 
 	case *delete != -1:
 		todos = pkg.DeleteTodo(todos, *delete)
+		pkg.SaveTodos(todos)
 
 	case *list:
 		pkg.ListTodos(todos)
 
 	case *status != "":
 		pkg.UpdateTodoStatus(todos, *status)
+		pkg.SaveTodos(todos)
 
 	default:
 		fmt.Println("No operation specified. Use --help for available commands.")
