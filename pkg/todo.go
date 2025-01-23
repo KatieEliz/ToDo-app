@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -63,5 +64,28 @@ func UpdateTodoDescription(todos []TodoItem, input string) {
 	if len(parts) != 2 {
 		fmt.Println("Invalid format. Use ID:Description.")
 		return
+	}
+
+	id, err := strconv.Atoi(parts[0])
+	if err != nil {
+		fmt.Printf("Invalid ID: %v\n", err)
+		return
+	}
+
+	description := parts[1]
+
+	updated := false
+	for index, todo := range todos {
+		if todo.ID == id {
+			todos[index].Description = description
+			updated = true
+			return
+		}
+
+		if updated {
+			fmt.Println("To-do item updated.")
+		} else {
+			fmt.Println("To-do item not found.")
+		}
 	}
 }
