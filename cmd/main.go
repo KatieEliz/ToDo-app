@@ -30,4 +30,14 @@ func main() {
 
 	pkg.UpdateTodoDescription(todos, "1:Updated task description")
 
+	todos = pkg.DeleteTodo(todos, 1)
+	fmt.Println("\nTodos after deleting item with ID 1:")
+	for _, todo := range todos {
+		fmt.Printf("ID: %d, Description: %s, Status: %s\n", todo.ID, todo.Description, todo.Status)
+	}
+
+	err = pkg.SaveTodos(todos)
+	if err != nil {
+		log.Fatal("Error saving todos after deletion:", err)
+	}
 }
