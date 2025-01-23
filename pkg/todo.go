@@ -89,3 +89,21 @@ func UpdateTodoDescription(todos []TodoItem, input string) {
 		}
 	}
 }
+
+func DeleteTodo(todos []TodoItem, id int) []TodoItem {
+	found := false
+	for index, todo := range todos {
+		if todo.ID == id {
+			todos = append(todos[:index], todos[index+1:]...)
+			found = true
+			break
+		}
+	}
+
+	if found {
+		fmt.Println("To-do item deleted.")
+	} else {
+		fmt.Println("To-do item not found.")
+	}
+	return todos
+}
