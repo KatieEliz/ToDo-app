@@ -13,6 +13,7 @@ func main() {
 	}
 
 	fmt.Println("Loaded Todos:")
+	pkg.ListTodos(todos)
 	for _, todo := range todos {
 		fmt.Printf("ID: %d, Description: %s, Status: %s\n", todo.ID, todo.Description, todo.Status)
 	}

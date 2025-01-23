@@ -51,9 +51,15 @@ func SaveTodos(todos []TodoItem) error {
 
 func AddTodo(todos []TodoItem, description string) []TodoItem {
 	id := 1
-	if len(todos) > 0 {
-		id = todos[len(todos)-1].ID + 1
+
+	for _, todo := range todos {
+		if todo.ID >= id {
+			id = todo.ID + 1
+		}
 	}
+	/*if len(todos) > 0 {
+		id = todos[len(todos)-1].ID + 1
+	}*/
 	todos = append(todos, TodoItem{ID: id, Description: description, Status: "pending"})
 	fmt.Println("To-do item added")
 	return todos
@@ -79,7 +85,7 @@ func UpdateTodoDescription(todos []TodoItem, input string) {
 		if todo.ID == id {
 			todos[index].Description = description
 			updated = true
-			return
+			break
 		}
 
 		if updated {
@@ -106,4 +112,15 @@ func DeleteTodo(todos []TodoItem, id int) []TodoItem {
 		fmt.Println("To-do item not found.")
 	}
 	return todos
+}
+
+func ListTodos(todos []TodoItem) {
+	if len(todos) == 0 {
+		fmt.Println("No to-do items found.")
+	} else {
+		fmt.Println("To-do list:")
+		for _, todo := range todos {
+			fmt.Printf("%d: %s [%s\n]", todo.ID, todo.Description, todo.Status)
+		}
+	}
 }
