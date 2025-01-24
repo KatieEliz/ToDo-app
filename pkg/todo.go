@@ -57,9 +57,7 @@ func AddTodo(todos []TodoItem, description string) []TodoItem {
 			id = todo.ID + 1
 		}
 	}
-	/*if len(todos) > 0 {
-		id = todos[len(todos)-1].ID + 1
-	}*/
+
 	todos = append(todos, TodoItem{ID: id, Description: description, Status: "pending"})
 	fmt.Println("To-do item added")
 	return todos
