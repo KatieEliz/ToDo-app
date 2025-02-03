@@ -1,152 +1,189 @@
 package pkg
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 type TodoItem struct {
-	ID          int    `json: "id"`
+	ID          int    `json:"id"`
 	Description string `json:"description"`
-	Status      string `json: "status"`
+	Status      string `json:"status"`
 }
 
 var (
 	filename = "todo.json"
+	logger   = slog.New(slog.NewTextHandler(os.Stdout, nil))
 )
 
-func LoadTodos() ([]TodoItem, error) {
-	file, err := os.Open(filename)
+func GenerateTraceID() string {
+	return uuid.New().String()
+}
 
+func LoadTodos(ctx context.Context) ([]TodoItem, error) {
+	traceID := ctx.Value("TraceID").(string)
+	file, err := os.Open(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
+			logger.With("TraceID", traceID).Info("No existing todo file found. Starting fresh.")
 			return []TodoItem{}, nil
 		}
+		logger.With("TraceID", traceID).Error("Failed to open todo file", "error", err)
 		return nil, err
 	}
 	defer file.Close()
 
 	var todos []TodoItem
-	err = json.NewDecoder(file).Decode(&todos)
+	fileStats, err := file.Stat()
 	if err != nil {
+		logger.With("TraceID", traceID).Error("Failed to get file stats", "error", err)
 		return nil, err
 	}
 
-	return todos, nil
+	if fileStats.Size() == 0 {
+		return todos, nil
+	}
 
+	err = json.NewDecoder(file).Decode(&todos)
+	if err != nil {
+		logger.With("TraceID", traceID).Error("Failed to decode todo file", "error", err)
+		return nil, err
+	}
+	logger.With("TraceID", traceID).Info("Loaded todos from file", "count", len(todos))
+	return todos, nil
 }
 
-func SaveTodos(todos []TodoItem) error {
+func SaveTodos(ctx context.Context, todos []TodoItem) error {
+	traceID := ctx.Value("TraceID").(string)
 	file, err := os.Create(filename)
 	if err != nil {
+		logger.With("TraceID", traceID).Error("Failed to open file for writing", "error", err)
 		return err
 	}
 	defer file.Close()
 
-	return json.NewEncoder(file).Encode(todos)
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+
+	err = encoder.Encode(todos)
+	if err != nil {
+		logger.With("TraceID", traceID).Error("Failed to encode JSON", "error", err)
+		return err
+	}
+
+	logger.With("TraceID", traceID).Info("Saved todos successfully", "count", len(todos))
+	return nil
 }
 
-func AddTodo(todos []TodoItem, description string) []TodoItem {
-	id := 1
+func AddTodo(ctx context.Context, todos []TodoItem, description string) ([]TodoItem, error) {
+	traceID := ctx.Value("TraceID").(string)
 
+	id := 1
 	for _, todo := range todos {
 		if todo.ID >= id {
 			id = todo.ID + 1
 		}
 	}
 
-	todos = append(todos, TodoItem{ID: id, Description: description, Status: "pending"})
-	fmt.Println("To-do item added")
-	return todos
+	newTodo := TodoItem{
+		ID:          id,
+		Description: description,
+		Status:      "not started",
+	}
+
+	todos = append(todos, newTodo)
+	logger.With("TraceID", traceID).Info("To-do item added", "id", id, "description", description)
+
+	return todos, nil
 }
 
-func UpdateTodoDescription(todos []TodoItem, input string) {
+func UpdateTodoDescription(ctx context.Context, todos []TodoItem, input string) ([]TodoItem, error) {
+	traceID := ctx.Value("TraceID").(string)
+
 	parts := strings.SplitN(input, ":", 2)
 	if len(parts) != 2 {
-		fmt.Println("Invalid format. Use ID:Description.")
-		return
+		logger.With("TraceID", traceID).Warn("Invalid format for update", "input", input)
+		return todos, nil
 	}
 
 	id, err := strconv.Atoi(parts[0])
 	if err != nil {
-		fmt.Printf("Invalid ID: %v\n", err)
-		return
+		logger.With("TraceID", traceID).Error("Invalid ID for update", "input", input, "error", err)
+		return todos, err
 	}
 
 	description := parts[1]
 
-	updated := false
 	for index, todo := range todos {
 		if todo.ID == id {
 			todos[index].Description = description
-			updated = true
-			break
-		}
-
-		if updated {
-			fmt.Println("To-do item updated.")
-		} else {
-			fmt.Println("To-do item not found.")
+			logger.With("TraceID", traceID).Info("To-do description updated", "id", id, "new_description", description)
+			return todos, nil
 		}
 	}
+	logger.With("TraceID", traceID).Warn("To-do item not found for update", "id", id)
+	return todos, nil
 }
 
-func DeleteTodo(todos []TodoItem, id int) []TodoItem {
-	found := false
-	for index, todo := range todos {
-		if todo.ID == id {
-			todos = append(todos[:index], todos[index+1:]...)
-			found = true
-			break
-		}
-	}
+func UpdateTodoStatus(ctx context.Context, todos []TodoItem, input string) ([]TodoItem, error) {
+	traceID := ctx.Value("TraceID").(string)
 
-	if found {
-		fmt.Println("To-do item deleted.")
-	} else {
-		fmt.Println("To-do item not found.")
-	}
-	return todos
-}
-
-func ListTodos(todos []TodoItem) {
-	if len(todos) == 0 {
-		fmt.Println("No to-do items found.")
-	} else {
-		fmt.Println("To-do list:")
-		for _, todo := range todos {
-			fmt.Printf("%d: %s [%s\n]", todo.ID, todo.Description, todo.Status)
-		}
-	}
-}
-
-func UpdateTodoStatus(todos []TodoItem, input string) {
 	parts := strings.SplitN(input, ":", 2)
 	if len(parts) != 2 {
-		fmt.Println("Invalid format. Use ID:Status.")
-		return
+		logger.With("TraceID", traceID).Warn("Invalid format for status update", "input", input)
+		return todos, nil
 	}
+
 	id, err := strconv.Atoi(parts[0])
 	if err != nil {
-		fmt.Printf("Invalid ID: %v\n", err)
-		return
+		logger.With("TraceID", traceID).Error("Invalid ID for status update", "input", input, "error", err)
+		return todos, err
 	}
+
 	newStatus := parts[1]
 
-	updated := false
 	for index, todo := range todos {
 		if todo.ID == id {
 			todos[index].Status = newStatus
-			updated = true
-			break
+			logger.With("TraceID", traceID).Info("To-do status updated", "id", id, "new_status", newStatus)
+			return todos, nil
 		}
 	}
-	if updated {
-		fmt.Println("To-do item status updated.")
-	} else {
-		fmt.Println("To-do item not found.")
+	logger.With("TraceID", traceID).Warn("To-do item not found for status update", "id", id)
+	return todos, nil
+}
+
+func DeleteTodo(ctx context.Context, todos []TodoItem, id int) ([]TodoItem, error) {
+	traceID := ctx.Value("TraceID").(string)
+
+	for index, todo := range todos {
+		if todo.ID == id {
+			todos = append(todos[:index], todos[index+1:]...)
+			logger.With("TraceID", traceID).Info("To-do item deleted", "id", id)
+			return todos, nil
+		}
+	}
+
+	logger.With("TraceID", traceID).Warn("To-do item not found for deletion", "id", id)
+	return todos, nil
+}
+
+func ListTodos(ctx context.Context, todos []TodoItem) {
+	traceID := ctx.Value("TraceID").(string)
+
+	if len(todos) == 0 {
+		logger.With("TraceID", traceID).Info("No to-do items found.")
+		return
+	}
+
+	logger.With("TraceID", traceID).Info("Listing to-do items", "count", len(todos))
+	for _, todo := range todos {
+		logger.With("TraceID", traceID).Info("To-do item", "id", todo.ID, "description", todo.Description, "status", todo.Status)
 	}
 }

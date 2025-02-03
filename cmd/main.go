@@ -1,12 +1,18 @@
 package main
 
 import (
+	"context"
 	"flag"
-	"fmt"
+	"log/slog"
+	"os"
 	"todo-app/pkg"
 )
 
+var logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
+
 func main() {
+	ctx := context.WithValue(context.Background(), "TraceID", pkg.GenerateTraceID())
+
 	add := flag.String("add", "", "Add a new to-do item.")
 	update := flag.String("update", "", "Update a to-do item, format ID:Description.")
 	delete := flag.Int("delete", -1, "Delete a to-do item by ID.")
@@ -15,33 +21,51 @@ func main() {
 
 	flag.Parse()
 
-	todos, err := pkg.LoadTodos()
+	todos, err := pkg.LoadTodos(ctx)
 	if err != nil {
-		fmt.Printf("Error loading to-dos: %v\n", err)
+		logger.With("TraceID", ctx.Value("TraceID")).Error("Error loading to-dos", "error", err)
 		return
 	}
 
 	switch {
 	case *add != "":
-		todos = pkg.AddTodo(todos, *add)
-		pkg.SaveTodos(todos)
+		todos, err = pkg.AddTodo(ctx, todos, *add)
+		if err != nil {
+			logger.With("TraceID", ctx.Value("TraceID")).Error("Failed to add todo", "error", err)
+			return
+		}
 
 	case *update != "":
-		pkg.UpdateTodoDescription(todos, *update)
-		pkg.SaveTodos(todos)
+		todos, err = pkg.UpdateTodoDescription(ctx, todos, *update)
+		if err != nil {
+			logger.With("TraceID", ctx.Value("TraceID")).Error("Failed to update description", "error", err)
+			return
+		}
 
 	case *delete != -1:
-		todos = pkg.DeleteTodo(todos, *delete)
-		pkg.SaveTodos(todos)
+		todos, err = pkg.DeleteTodo(ctx, todos, *delete)
+		if err != nil {
+			logger.With("TraceID", ctx.Value("TraceID")).Error("Failed to delete todo", "error", err)
+			return
+		}
 
 	case *list:
-		pkg.ListTodos(todos)
+		pkg.ListTodos(ctx, todos)
+		return
 
 	case *status != "":
-		pkg.UpdateTodoStatus(todos, *status)
-		pkg.SaveTodos(todos)
+		todos, err = pkg.UpdateTodoStatus(ctx, todos, *status)
+		if err != nil {
+			logger.With("TraceID", ctx.Value("TraceID")).Error("Failed to update status", "error", err)
+			return
+		}
 
 	default:
-		fmt.Println("No operation specified. Use --help for available commands.")
+		logger.With("TraceID", ctx.Value("TraceID")).Warn("No operation specified. Use --help for available commands.")
+		return
+	}
+	err = pkg.SaveTodos(ctx, todos)
+	if err != nil {
+		logger.With("TraceID", ctx.Value("TraceID")).Error("Failed to save todos", "error", err)
 	}
 }
