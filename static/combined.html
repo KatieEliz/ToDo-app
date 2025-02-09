@@ -3,34 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To-Do Application</title>
+    <title>Todo List</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <!-- About Section -->
-    <section id="about">
-        <h1>About To-Do App</h1>
-        <p>This is a simple to-do application built with Go.</p>
-        <p>Manage your tasks easily and track their progress!</p>
-    </section>
+    <h1>Todo List</h1>
 
-    <!-- To-Do List Section -->
-    <section id="todo-list">
-        <h1>To-Do List</h1>
+    <!-- About Text -->
+    <p>{{.About}}</p>
 
-        <form action="/create" method="POST">
-            <label for="description">New Task Description:</label>
-            <input type="text" id="description" name="description" required />
-            <button type="submit">Add Task</button>
-        </form>
-
-        <ul>
-            {{range .}}
-                <li>{{.Description}} - Status: {{.Status}}</li>
-            {{end}}
-        </ul>
-    </section>
-    
-    <script src="/static/script.js"></script>
+    <!-- Todo Items List -->
+    <ul>
+        {{range .Todos}}
+            <li>{{.Description}} - {{.Status}}</li>
+        {{else}}
+            <li>No todos available.</li>
+        {{end}}
+    </ul>
 </body>
 </html>
+
