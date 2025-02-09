@@ -3,6 +3,7 @@ package pkg
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log/slog"
 	"os"
 	"strconv"
@@ -27,7 +28,13 @@ func GenerateTraceID() string {
 }
 
 func LoadTodos(ctx context.Context) ([]TodoItem, error) {
-	traceID := ctx.Value("TraceID").(string)
+	traceIDValue := ctx.Value("TraceID")
+	traceID, ok := traceIDValue.(string)
+	if !ok || traceID == "" {
+		traceID = "unknown"
+	}
+
+	// Open the todo.json file
 	file, err := os.Open(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -39,22 +46,20 @@ func LoadTodos(ctx context.Context) ([]TodoItem, error) {
 	}
 	defer file.Close()
 
-	var todos []TodoItem
-	fileStats, err := file.Stat()
+	// Read the entire file content
+	data, err := io.ReadAll(file)
 	if err != nil {
-		logger.With("TraceID", traceID).Error("Failed to get file stats", "error", err)
+		logger.With("TraceID", traceID).Error("Failed to read todo file", "error", err)
 		return nil, err
 	}
 
-	if fileStats.Size() == 0 {
-		return todos, nil
-	}
-
-	err = json.NewDecoder(file).Decode(&todos)
-	if err != nil {
+	// Parse the JSON data into a slice of TodoItem
+	var todos []TodoItem
+	if err := json.Unmarshal(data, &todos); err != nil {
 		logger.With("TraceID", traceID).Error("Failed to decode todo file", "error", err)
 		return nil, err
 	}
+
 	logger.With("TraceID", traceID).Info("Loaded todos from file", "count", len(todos))
 	return todos, nil
 }
