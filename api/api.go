@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// Middleware for tracing requests
 func TraceMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		traceID := uuid.New().String()
