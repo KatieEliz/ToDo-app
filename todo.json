@@ -8,6 +8,11 @@
         "id": 2,
         "description": "Read about Go templates",
         "status": "in progress"
+    },
+    {
+         "id": 3,
+         "description": "Learn Cocurrency",
+         "status": "in progress"
     }
 ]
 

@@ -1,7 +1,6 @@
 package pkg
 
 import (
-	"context"
 	"os"
 	"testing"
 )
@@ -14,16 +13,19 @@ func TestCleanUpOfExistingTodoJsonFiles(t *testing.T) {
 }
 
 func TestLoadingTodosWhenFileDoesntExist(t *testing.T) {
-	ctx := context.Background()
-	_, err := LoadTodos(ctx)
+	store := NewTodoStore()
+	todos, err := store.LoadTodos()
 	if err != nil {
 		t.Fatalf("Failed to load todos: %v", err)
+	}
+	if len(todos) != 0 {
+		t.Errorf("Expected 0 todos, got %d", len(todos))
 	}
 }
 
 func TestReturnedSliceIsEmptyWhenFileDoesntExist(t *testing.T) {
-	ctx := context.Background()
-	todos, err := LoadTodos(ctx)
+	store := NewTodoStore()
+	todos, err := store.LoadTodos()
 	if err != nil {
 		t.Fatalf("Unexpected error while loading todos: %v", err)
 	}
@@ -33,24 +35,21 @@ func TestReturnedSliceIsEmptyWhenFileDoesntExist(t *testing.T) {
 }
 
 func TestCreateSampleTodoFileAndSaveSampleToFile(t *testing.T) {
-	ctx := context.Background()
+	store := NewTodoStore()
 	expectedTodos := []TodoItem{
 		{ID: 1, Description: "Test todo", Status: "pending"},
 	}
-
-	err := SaveTodos(ctx, expectedTodos)
+	store.AddTodo(expectedTodos[0].Description)
+	err := store.SaveTodos()
 	if err != nil {
 		t.Fatalf("Failed to save todos: %v", err)
 	}
-
-	loadedTodos, err := LoadTodos(ctx)
+	loadedTodos, err := store.LoadTodos()
 	if err != nil {
 		t.Fatalf("Failed to load saved todos: %v", err)
 	}
-
 	if len(loadedTodos) != len(expectedTodos) {
 		t.Errorf("Expected %d todos, got %d", len(expectedTodos), len(loadedTodos))
 	}
-
 	_ = os.Remove("todo.json")
 }

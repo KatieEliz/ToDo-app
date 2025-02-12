@@ -14,16 +14,16 @@ import (
 func TraceMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		traceID := uuid.New().String()
-		ctx := context.WithValue(r.Context(), "TraceID", traceID)
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, "TraceID", traceID)
 		log.Printf("Request: %s %s [TraceID: %s]", r.Method, r.URL.Path, traceID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-// Get all todos
 func GetTodosHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	todos, err := pkg.LoadTodos(ctx)
+	todoStore := pkg.NewTodoStore()
+	todos, err := todoStore.LoadTodos()
 	if err != nil {
 		http.Error(w, "Failed to load todos", http.StatusInternalServerError)
 		log.Println("Error loading todos:", err)
@@ -33,10 +33,7 @@ func GetTodosHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(todos)
 }
 
-// Create a new todo
 func CreateTodoHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -48,19 +45,16 @@ func CreateTodoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	todos, err := pkg.LoadTodos(ctx)
+	todoStore := pkg.NewTodoStore()
+	_, err := todoStore.LoadTodos()
 	if err != nil {
 		http.Error(w, "Failed to load todos", http.StatusInternalServerError)
 		return
 	}
 
-	todos, err = pkg.AddTodo(ctx, todos, description)
-	if err != nil {
-		http.Error(w, "Failed to add todo", http.StatusInternalServerError)
-		return
-	}
+	todoStore.AddTodo(description)
 
-	if err := pkg.SaveTodos(ctx, todos); err != nil {
+	if err := todoStore.SaveTodos(); err != nil {
 		http.Error(w, "Failed to save todos", http.StatusInternalServerError)
 		return
 	}
@@ -69,10 +63,7 @@ func CreateTodoHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "http://localhost:8080/list", http.StatusSeeOther)
 }
 
-// Update a todo
 func UpdateTodoHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
 	var input struct {
 		ID          int    `json:"id"`
 		Description string `json:"description,omitempty"`
@@ -84,7 +75,8 @@ func UpdateTodoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	todos, err := pkg.LoadTodos(ctx)
+	todoStore := pkg.NewTodoStore()
+	todos, err := todoStore.LoadTodos()
 	if err != nil {
 		http.Error(w, "Failed to load todos", http.StatusInternalServerError)
 		return
@@ -94,21 +86,13 @@ func UpdateTodoHandler(w http.ResponseWriter, r *http.Request) {
 
 	if input.Description != "" {
 		updateInput := fmt.Sprintf("%d:%s", input.ID, input.Description)
-		todos, err = pkg.UpdateTodoDescription(ctx, todos, updateInput)
-		if err != nil {
-			http.Error(w, "Failed to update todo description", http.StatusInternalServerError)
-			return
-		}
+		todoStore.UpdateTodoDescription(updateInput)
 		updated = true
 	}
 
 	if input.Status != "" {
 		updateInput := fmt.Sprintf("%d:%s", input.ID, input.Status)
-		todos, err = pkg.UpdateTodoStatus(ctx, todos, updateInput)
-		if err != nil {
-			http.Error(w, "Failed to update todo status", http.StatusInternalServerError)
-			return
-		}
+		todoStore.UpdateTodoStatus(updateInput)
 		updated = true
 	}
 
@@ -117,7 +101,7 @@ func UpdateTodoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := pkg.SaveTodos(ctx, todos); err != nil {
+	if err := todoStore.SaveTodos(); err != nil {
 		http.Error(w, "Failed to save updated todos", http.StatusInternalServerError)
 		return
 	}
@@ -126,10 +110,7 @@ func UpdateTodoHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(todos)
 }
 
-// Delete a todo
 func DeleteTodoHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
 	var input struct {
 		ID int `json:"id"`
 	}
@@ -139,19 +120,16 @@ func DeleteTodoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	todos, err := pkg.LoadTodos(ctx)
+	todoStore := pkg.NewTodoStore()
+	todos, err := todoStore.LoadTodos()
 	if err != nil {
 		http.Error(w, "Failed to load todos", http.StatusInternalServerError)
 		return
 	}
 
-	todos, err = pkg.DeleteTodo(ctx, todos, input.ID)
-	if err != nil {
-		http.Error(w, "Failed to delete todo", http.StatusInternalServerError)
-		return
-	}
+	todoStore.DeleteTodo(input.ID)
 
-	if err := pkg.SaveTodos(ctx, todos); err != nil {
+	if err := todoStore.SaveTodos(); err != nil {
 		http.Error(w, "Failed to save todos after deletion", http.StatusInternalServerError)
 		return
 	}
@@ -160,7 +138,6 @@ func DeleteTodoHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(todos)
 }
 
-// Start API Server
 func StartServer() {
 	mux := http.NewServeMux()
 	mux.Handle("/create", TraceMiddleware(http.HandlerFunc(CreateTodoHandler)))
