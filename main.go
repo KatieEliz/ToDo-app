@@ -2,10 +2,12 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"todo-app/api"
 	"todo-app/pkg"
 )
@@ -13,17 +15,12 @@ import (
 var static = os.DirFS("static")
 
 func StartServer() {
-	// Initialize the TodoStore
 	todoStore := pkg.NewTodoStore()
-
-	// Mux for routing
 	mux := http.NewServeMux()
 
-	// Serve static files
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-
 		todos, err := todoStore.LoadTodos()
 		if err != nil {
 			http.Error(w, "Failed to load todos", http.StatusInternalServerError)
@@ -50,18 +47,63 @@ func StartServer() {
 			log.Println("Error executing template:", err)
 		}
 	})
+
 	mux.HandleFunc("/create", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "http://localhost:8081/create", http.StatusTemporaryRedirect)
+		if r.Method == http.MethodPost {
+			description := r.PostFormValue("description")
+			if description == "" {
+				http.Error(w, "Description is required", http.StatusBadRequest)
+				return
+			}
+
+			todoStore.AddTodo(description)
+		}
+
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
-	mux.HandleFunc("/get", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "http://localhost:8081/get", http.StatusTemporaryRedirect)
-	})
+
 	mux.HandleFunc("/update", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "http://localhost:8081/update", http.StatusTemporaryRedirect)
+		if r.Method == http.MethodPost {
+			idStr := r.PostFormValue("id")
+			description := r.PostFormValue("description")
+
+			if idStr == "" || description == "" {
+				http.Error(w, "ID and description are required", http.StatusBadRequest)
+				return
+			}
+
+			id, err := strconv.Atoi(idStr)
+			if err != nil {
+				http.Error(w, "Invalid ID format", http.StatusBadRequest)
+				return
+			}
+
+			todoStore.UpdateTodoDescription(fmt.Sprintf("%d:%s", id, description))
+		}
+
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
+
 	mux.HandleFunc("/delete", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "http://localhost:8081/delete", http.StatusTemporaryRedirect)
+		if r.Method == http.MethodPost {
+			idStr := r.PostFormValue("id")
+			if idStr == "" {
+				http.Error(w, "ID is required", http.StatusBadRequest)
+				return
+			}
+
+			id, err := strconv.Atoi(idStr)
+			if err != nil {
+				http.Error(w, "Invalid ID format", http.StatusBadRequest)
+				return
+			}
+
+			todoStore.DeleteTodo(id)
+		}
+
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
+
 	log.Println("Starting web server on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }

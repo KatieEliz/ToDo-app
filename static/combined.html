@@ -8,16 +8,30 @@
 </head>
 <body>
     <h1>Todo List</h1>
-
-    <p>{{.About}}</p>
-
     <ul>
         {{range .Todos}}
-            <li>{{.Description}} - {{.Status}}</li>
+            <li>
+                {{.Description}} - {{.Status}}
+                <form action="/update" method="POST" style="display:inline;">
+                    <input type="hidden" name="id" value="{{.ID}}">
+                    <input type="text" name="description" value="{{.Description}}">
+                    <button type="submit">Update</button>
+                </form>
+                <form action="/delete" method="POST" style="display:inline;">
+                    <input type="hidden" name="id" value="{{.ID}}">
+                    <button type="submit">Delete</button>
+                </form>
+            </li>
         {{else}}
             <li>No todos available.</li>
         {{end}}
     </ul>
+
+    <h2>Create New Todo</h2>
+    <form action="/create" method="POST">
+        <input type="text" name="description" placeholder="Enter description" required>
+        <button type="submit">Create Todo</button>
+    </form>
+
 </body>
 </html>
-

@@ -30,7 +30,7 @@ type TodoStore struct {
 func NewTodoStore() *TodoStore {
 	ts := &TodoStore{
 		todos: []TodoItem{},
-		ch:    make(chan func()),
+		ch:    make(chan func(), 100),
 	}
 	go ts.run()
 	return ts
